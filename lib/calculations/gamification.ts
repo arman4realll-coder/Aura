@@ -225,5 +225,5 @@ export function getDebuffMessage(
 }
 
 // Re-export calculateLevel for use in store
-export { calculateLevel, getRank };
+export { calculateLevel };
 
