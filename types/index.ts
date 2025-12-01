@@ -107,7 +107,9 @@ export interface FoodItem {
   is_high_protein: boolean;
   has_typical_tadka: boolean;
   typical_tadka_oil_ml: number | null;
-  bowl_size_g: number | null; // Standard bowl size in grams (e.g., 200g for dal, 150g for sabji)
+  bowl_size_g: number | null; // Standard bowl size in grams (e.g., 200g for dal)
+  unit_size_g: number | null; // Standard unit size in grams (e.g., 40g for 1 roti, 50g for 1 egg)
+  tags?: string[]; // AI tags for semantic search
 }
 
 // Form Types

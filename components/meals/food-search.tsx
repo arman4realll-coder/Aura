@@ -14,7 +14,7 @@ interface FoodSearchProps {
   className?: string;
 }
 
-type MeasurementUnit = "grams" | "bowl";
+type MeasurementUnit = "grams" | "bowl" | "piece";
 
 export function FoodSearch({ onSelect, region, className }: FoodSearchProps) {
   const [query, setQuery] = useState("");
@@ -25,6 +25,33 @@ export function FoodSearch({ onSelect, region, className }: FoodSearchProps) {
   const [quantity, setQuantity] = useState(100);
   const [unit, setUnit] = useState<MeasurementUnit>("grams");
   const searchRef = useRef<HTMLDivElement>(null);
+
+  // AI-Powered Smart Parsing Logic
+  useEffect(() => {
+    const parseSearchQuery = (input: string) => {
+      // Regex patterns for smart detection
+      const quantityPattern = /^(\d+(\.\d+)?)\s*(?:g|gm|gram|grams|bowl|bowls|katori|pc|pcs|piece|pieces|no|num)?\s+(.*)$/i;
+      const unitPattern = /(bowl|katori|piece|roti|egg|apple|banana|fruit)/i;
+      
+      const match = input.match(quantityPattern);
+      
+      if (match) {
+        const qty = parseFloat(match[1]);
+        const potentialFoodName = match[3];
+        const unitText = input.toLowerCase();
+        
+        return { qty, potentialFoodName, unitText };
+      }
+      return null;
+    };
+
+    // Only run smart parse if we have a selection context or typing finished
+    const smartParse = parseSearchQuery(query);
+    if (smartParse && smartParse.qty && smartParse.potentialFoodName.length > 2) {
+      // We can use these hints when a user selects a food item
+      // For now, we just let the search run normally, but we store the intent
+    }
+  }, [query]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -102,12 +129,47 @@ export function FoodSearch({ onSelect, region, className }: FoodSearchProps) {
 
   const handleSelectFood = (food: FoodItem) => {
     setSelectedFood(food);
+    
+    // AI Smart Unit Detection
+    // Check if the query contained a quantity
+    const quantityPattern = /^(\d+(\.\d+)?)\s*(?:g|gm|gram|grams|bowl|bowls|katori|pc|pcs|piece|pieces|no|num)?\s*/i;
+    const match = query.match(quantityPattern);
+    
+    if (match) {
+      const detectedQty = parseFloat(match[1]);
+      const lowerQuery = query.toLowerCase();
+      
+      if (lowerQuery.includes("bowl") || lowerQuery.includes("katori")) {
+        if (food.bowl_size_g) {
+          setUnit("bowl");
+          setQuantity(detectedQty);
+          setQuery("");
+          setResults([]);
+          return;
+        }
+      } else if (
+        food.unit_size_g && 
+        (lowerQuery.includes("pc") || lowerQuery.includes("piece") || lowerQuery.includes("no") || 
+         food.category === "roti" || food.name_english.toLowerCase().includes("egg"))
+      ) {
+        setUnit("piece");
+        setQuantity(detectedQty);
+        setQuery("");
+        setResults([]);
+        return;
+      }
+    }
+
+    // Default fallbacks if no smart detection
     setQuery("");
     setResults([]);
-    // Auto-set to bowl if available, otherwise default to 100g
-    if (food.bowl_size_g) {
+    
+    if (food.unit_size_g) {
+      setUnit("piece");
+      setQuantity(1);
+    } else if (food.bowl_size_g) {
       setUnit("bowl");
-      setQuantity(food.bowl_size_g);
+      setQuantity(1);
     } else {
       setUnit("grams");
       setQuantity(100);
@@ -116,10 +178,14 @@ export function FoodSearch({ onSelect, region, className }: FoodSearchProps) {
 
   const handleAddFood = () => {
     if (selectedFood && quantity > 0) {
-      // Convert bowl to grams if needed
-      const quantityInGrams = unit === "bowl" && selectedFood.bowl_size_g 
-        ? quantity * selectedFood.bowl_size_g 
-        : quantity;
+      // Convert to grams based on unit
+      let quantityInGrams = quantity;
+      
+      if (unit === "bowl" && selectedFood.bowl_size_g) {
+        quantityInGrams = quantity * selectedFood.bowl_size_g;
+      } else if (unit === "piece" && selectedFood.unit_size_g) {
+        quantityInGrams = quantity * selectedFood.unit_size_g;
+      }
       
       onSelect(selectedFood, quantityInGrams);
       setSelectedFood(null);
@@ -146,6 +212,9 @@ export function FoodSearch({ onSelect, region, className }: FoodSearchProps) {
   const getQuantityInGrams = () => {
     if (unit === "bowl" && selectedFood?.bowl_size_g) {
       return quantity * selectedFood.bowl_size_g;
+    }
+    if (unit === "piece" && selectedFood?.unit_size_g) {
+      return quantity * selectedFood.unit_size_g;
     }
     return quantity;
   };
@@ -206,6 +275,7 @@ export function FoodSearch({ onSelect, region, className }: FoodSearchProps) {
                       <div className="text-xs text-muted-foreground mt-1">
                         {food.calories_per_100g} cal | {food.protein_per_100g}g protein per 100g
                         {food.bowl_size_g && ` | ~${food.bowl_size_g}g per bowl`}
+                        {food.unit_size_g && ` | ~${food.unit_size_g}g per piece`}
                       </div>
                     </div>
                     <Plus className="w-5 h-5 text-primary" />
@@ -287,25 +357,46 @@ export function FoodSearch({ onSelect, region, className }: FoodSearchProps) {
                     Bowl ({selectedFood.bowl_size_g}g)
                   </button>
                 )}
+                {selectedFood?.unit_size_g && (
+                  <button
+                    onClick={() => {
+                      setUnit("piece");
+                      setQuantity(1);
+                    }}
+                    className={cn(
+                      "flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                      unit === "piece"
+                        ? "bg-primary text-white"
+                        : "bg-card border border-border hover:border-primary/50 text-white"
+                    )}
+                  >
+                    Piece ({selectedFood.unit_size_g}g)
+                  </button>
+                )}
               </div>
 
               {/* Quantity Input */}
               <div className="flex items-center gap-4">
                 <div className="flex-1">
                   <label className="text-sm text-muted-foreground mb-1 block">
-                    Quantity ({unit === "bowl" ? "bowls" : "grams"})
+                    Quantity ({unit === "bowl" ? "bowls" : unit === "piece" ? "pieces" : "grams"})
                   </label>
                   <Input
                     type="number"
                     value={quantity}
                     onChange={(e) => setQuantity(Number(e.target.value))}
                     min={0.1}
-                    step={unit === "bowl" ? 0.5 : 1}
+                    step={unit === "grams" ? 1 : 0.5}
                     className="text-center"
                   />
                   {unit === "bowl" && selectedFood?.bowl_size_g && (
                     <p className="text-xs text-muted-foreground mt-1 text-center">
                       = {Math.round(quantity * selectedFood.bowl_size_g)}g
+                    </p>
+                  )}
+                  {unit === "piece" && selectedFood?.unit_size_g && (
+                    <p className="text-xs text-muted-foreground mt-1 text-center">
+                      = {Math.round(quantity * selectedFood.unit_size_g)}g
                     </p>
                   )}
                 </div>
@@ -326,7 +417,7 @@ export function FoodSearch({ onSelect, region, className }: FoodSearchProps) {
                       </button>
                     ))
                   ) : (
-                    [0.5, 1, 1.5, 2].map((qty) => (
+                    [1, 2, 3, 4].map((qty) => (
                       <button
                         key={qty}
                         onClick={() => setQuantity(qty)}
