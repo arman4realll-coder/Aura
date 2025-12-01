@@ -59,10 +59,10 @@ export default function SettingsPage() {
       display_name: profile?.display_name || "",
       current_weight_kg: profile?.current_weight_kg || 70,
       target_weight_kg: profile?.target_weight_kg || undefined,
-      protein_target_g: profile?.protein_target_g || 120,
-      carbs_target_g: profile?.carbs_target_g || 250,
-      fats_target_g: profile?.fats_target_g || 50,
-      calories_target: profile?.calories_target || 2200,
+      protein_target_g: profile?.protein_target_g || 150,
+      carbs_target_g: profile?.carbs_target_g || 300,
+      fats_target_g: profile?.fats_target_g || 70,
+      calories_target: profile?.calories_target || 2500,
     },
   });
 

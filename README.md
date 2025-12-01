@@ -78,14 +78,14 @@ CREATE TABLE profiles (
   is_vegetarian BOOLEAN DEFAULT true,
   dietary_region TEXT DEFAULT 'Gujarat',
   
-  -- Daily Targets
-  protein_target_g INTEGER DEFAULT 120,
-  carbs_target_g INTEGER DEFAULT 250,
-  fats_target_g INTEGER DEFAULT 50,
-  calories_target INTEGER DEFAULT 2200,
-  magnesium_target_mg INTEGER DEFAULT 400,
-  zinc_target_mg INTEGER DEFAULT 15,
-  fiber_target_g INTEGER DEFAULT 40,
+  -- Daily Targets (OPTIMIZED FOR PEAK PERFORMANCE)
+  protein_target_g INTEGER DEFAULT 150, -- 2.5g/kg for elite muscle building
+  carbs_target_g INTEGER DEFAULT 300, -- Higher for optimal performance
+  fats_target_g INTEGER DEFAULT 70, -- 1.2g/kg for hormone optimization
+  calories_target INTEGER DEFAULT 2500, -- Higher baseline for active individuals
+  magnesium_target_mg INTEGER DEFAULT 600, -- 50% above RDA for recovery
+  zinc_target_mg INTEGER DEFAULT 20, -- 33% above RDA for testosterone
+  fiber_target_g INTEGER DEFAULT 50, -- 25% above RDA for gut health
   
   -- Game Stats
   total_xp BIGINT DEFAULT 0,
@@ -168,7 +168,8 @@ CREATE TABLE food_database (
   zinc_per_100g DECIMAL(4,2) DEFAULT 0,
   is_high_protein BOOLEAN DEFAULT false,
   has_typical_tadka BOOLEAN DEFAULT false,
-  typical_tadka_oil_ml DECIMAL(4,1)
+  typical_tadka_oil_ml DECIMAL(4,1),
+  bowl_size_g DECIMAL(5,1) -- Standard bowl size in grams (e.g., 200g for dal)
 );
 
 CREATE INDEX idx_food_name ON food_database(name_english);

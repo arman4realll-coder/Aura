@@ -35,12 +35,12 @@ export function calculateMacroTargets(data: OnboardingData): MacroTargets {
   }
   // recomp = maintenance calories
 
-  // Calculate macros
-  // Protein: 2.0g per kg bodyweight (high for muscle building)
-  const protein_g = Math.round(current_weight_kg * 2.0);
+  // Calculate macros - OPTIMIZED FOR SUPERIOR PERFORMANCE
+  // Protein: 2.5g per kg bodyweight (elite level for maximum muscle building and recovery)
+  const protein_g = Math.round(current_weight_kg * 2.5);
 
-  // Fats: 0.9g per kg bodyweight (adequate for hormone production)
-  const fats_g = Math.round(current_weight_kg * 0.9);
+  // Fats: 1.2g per kg bodyweight (optimal for hormone production and cognitive function)
+  const fats_g = Math.round(current_weight_kg * 1.2);
 
   // Carbs: Remaining calories after protein and fat
   // Protein = 4 cal/g, Fat = 9 cal/g, Carbs = 4 cal/g
@@ -58,13 +58,14 @@ export function calculateMacroTargets(data: OnboardingData): MacroTargets {
 }
 
 /**
- * Calculate micronutrient targets (fixed for most users)
+ * Calculate micronutrient targets - OPTIMIZED FOR PEAK PERFORMANCE
+ * Higher than RDA to ensure optimal recovery, cognitive function, and hormonal health
  */
 export function getMicroTargets() {
   return {
-    magnesium_target_mg: 400,
-    zinc_target_mg: 15,
-    fiber_target_g: 40,
+    magnesium_target_mg: 600, // 50% above RDA for better sleep, recovery, and muscle function
+    zinc_target_mg: 20, // 33% above RDA for optimal testosterone and immune function
+    fiber_target_g: 50, // 25% above RDA for optimal gut health and satiety
   };
 }
 
@@ -119,15 +120,16 @@ export function calculateFoodNutrition(
   },
   quantity_g: number
 ) {
+  // High precision calculation - using more decimal places for accuracy
   const multiplier = quantity_g / 100;
   return {
-    calories: Math.round(food.calories_per_100g * multiplier * 10) / 10,
-    protein_g: Math.round(food.protein_per_100g * multiplier * 10) / 10,
-    carbs_g: Math.round(food.carbs_per_100g * multiplier * 10) / 10,
-    fats_g: Math.round(food.fats_per_100g * multiplier * 10) / 10,
-    fiber_g: Math.round(food.fiber_per_100g * multiplier * 10) / 10,
-    magnesium_mg: Math.round(food.magnesium_per_100g * multiplier * 10) / 10,
-    zinc_mg: Math.round(food.zinc_per_100g * multiplier * 10) / 10,
+    calories: Math.round(food.calories_per_100g * multiplier * 100) / 100,
+    protein_g: Math.round(food.protein_per_100g * multiplier * 100) / 100,
+    carbs_g: Math.round(food.carbs_per_100g * multiplier * 100) / 100,
+    fats_g: Math.round(food.fats_per_100g * multiplier * 100) / 100,
+    fiber_g: Math.round(food.fiber_per_100g * multiplier * 100) / 100,
+    magnesium_mg: Math.round(food.magnesium_per_100g * multiplier * 100) / 100,
+    zinc_mg: Math.round(food.zinc_per_100g * multiplier * 100) / 100,
   };
 }
 

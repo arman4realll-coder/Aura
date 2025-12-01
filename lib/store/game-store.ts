@@ -25,13 +25,13 @@ interface GameStore extends GameState {
 }
 
 const initialDailyProgress: DailyProgress = {
-  calories: { current: 0, target: 2200 },
-  protein: { current: 0, target: 120 },
-  carbs: { current: 0, target: 250 },
-  fats: { current: 0, target: 50 },
-  fiber: { current: 0, target: 40 },
-  magnesium: { current: 0, target: 400 },
-  zinc: { current: 0, target: 15 },
+  calories: { current: 0, target: 2500 },
+  protein: { current: 0, target: 150 },
+  carbs: { current: 0, target: 300 },
+  fats: { current: 0, target: 70 },
+  fiber: { current: 0, target: 50 },
+  magnesium: { current: 0, target: 600 },
+  zinc: { current: 0, target: 20 },
 };
 
 const initialGameState: GameState = {

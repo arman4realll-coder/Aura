@@ -107,6 +107,7 @@ export interface FoodItem {
   is_high_protein: boolean;
   has_typical_tadka: boolean;
   typical_tadka_oil_ml: number | null;
+  bowl_size_g: number | null; // Standard bowl size in grams (e.g., 200g for dal, 150g for sabji)
 }
 
 // Form Types

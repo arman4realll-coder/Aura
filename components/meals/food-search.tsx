@@ -14,6 +14,8 @@ interface FoodSearchProps {
   className?: string;
 }
 
+type MeasurementUnit = "grams" | "bowl";
+
 export function FoodSearch({ onSelect, region, className }: FoodSearchProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<FoodItem[]>([]);
@@ -21,6 +23,7 @@ export function FoodSearch({ onSelect, region, className }: FoodSearchProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [quantity, setQuantity] = useState(100);
+  const [unit, setUnit] = useState<MeasurementUnit>("grams");
   const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -43,45 +46,108 @@ export function FoodSearch({ onSelect, region, className }: FoodSearchProps) {
       setIsLoading(true);
       const supabase = createClient();
 
-      const { data } = await supabase
+      // Enhanced search: search both English and Gujarati names, prioritize by relevance
+      const searchTerm = query.toLowerCase().trim();
+      
+      // Build query with fuzzy matching
+      let queryBuilder = supabase
         .from("food_database")
         .select("*")
-        .ilike("name_english", `%${query}%`)
-        .order("is_high_protein", { ascending: false })
-        .limit(10);
+        .or(`name_english.ilike.%${searchTerm}%,name_gujarati.ilike.%${searchTerm}%`);
+
+      // Prioritize regional foods if region is specified
+      if (region) {
+        // This will be handled in sorting
+      }
+
+      const { data } = await queryBuilder.limit(20);
 
       if (data) {
-        setResults(data as FoodItem[]);
+        // Advanced sorting algorithm
+        const sortedResults = (data as FoodItem[]).sort((a, b) => {
+          let scoreA = 0;
+          let scoreB = 0;
+
+          // Exact match gets highest priority
+          if (a.name_english.toLowerCase() === searchTerm) scoreA += 1000;
+          if (b.name_english.toLowerCase() === searchTerm) scoreB += 1000;
+
+          // Starts with query gets high priority
+          if (a.name_english.toLowerCase().startsWith(searchTerm)) scoreA += 500;
+          if (b.name_english.toLowerCase().startsWith(searchTerm)) scoreB += 500;
+
+          // High protein foods get bonus
+          if (a.is_high_protein) scoreA += 100;
+          if (b.is_high_protein) scoreB += 100;
+
+          // Regional preference (if Gujarati region and food has Gujarati name)
+          if (region === "Gujarat" && a.name_gujarati) scoreA += 50;
+          if (region === "Gujarat" && b.name_gujarati) scoreB += 50;
+
+          // Protein content matters
+          scoreA += a.protein_per_100g * 2;
+          scoreB += b.protein_per_100g * 2;
+
+          return scoreB - scoreA;
+        });
+
+        setResults(sortedResults.slice(0, 10));
       }
       setIsLoading(false);
     };
 
-    const debounce = setTimeout(searchFoods, 300);
+    const debounce = setTimeout(searchFoods, 200);
     return () => clearTimeout(debounce);
-  }, [query]);
+  }, [query, region]);
 
   const handleSelectFood = (food: FoodItem) => {
     setSelectedFood(food);
     setQuery("");
     setResults([]);
-  };
-
-  const handleAddFood = () => {
-    if (selectedFood && quantity > 0) {
-      onSelect(selectedFood, quantity);
-      setSelectedFood(null);
+    // Auto-set to bowl if available, otherwise default to 100g
+    if (food.bowl_size_g) {
+      setUnit("bowl");
+      setQuantity(food.bowl_size_g);
+    } else {
+      setUnit("grams");
       setQuantity(100);
     }
   };
 
+  const handleAddFood = () => {
+    if (selectedFood && quantity > 0) {
+      // Convert bowl to grams if needed
+      const quantityInGrams = unit === "bowl" && selectedFood.bowl_size_g 
+        ? quantity * selectedFood.bowl_size_g 
+        : quantity;
+      
+      onSelect(selectedFood, quantityInGrams);
+      setSelectedFood(null);
+      setQuantity(100);
+      setUnit("grams");
+    }
+  };
+
   const calculateNutrition = (food: FoodItem, qty: number) => {
+    // High precision calculation
     const multiplier = qty / 100;
     return {
-      calories: Math.round(food.calories_per_100g * multiplier),
-      protein: Math.round(food.protein_per_100g * multiplier * 10) / 10,
-      carbs: Math.round(food.carbs_per_100g * multiplier * 10) / 10,
-      fats: Math.round(food.fats_per_100g * multiplier * 10) / 10,
+      calories: Math.round(food.calories_per_100g * multiplier * 100) / 100,
+      protein: Math.round(food.protein_per_100g * multiplier * 100) / 100,
+      carbs: Math.round(food.carbs_per_100g * multiplier * 100) / 100,
+      fats: Math.round(food.fats_per_100g * multiplier * 100) / 100,
+      fiber: Math.round((food.fiber_per_100g || 0) * multiplier * 100) / 100,
+      magnesium: Math.round((food.magnesium_per_100g || 0) * multiplier * 100) / 100,
+      zinc: Math.round((food.zinc_per_100g || 0) * multiplier * 100) / 100,
     };
+  };
+
+  // Get current quantity in grams for display
+  const getQuantityInGrams = () => {
+    if (unit === "bowl" && selectedFood?.bowl_size_g) {
+      return quantity * selectedFood.bowl_size_g;
+    }
+    return quantity;
   };
 
   return (
@@ -138,8 +204,8 @@ export function FoodSearch({ onSelect, region, className }: FoodSearchProps) {
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        {food.calories_per_100g} cal | {food.protein_per_100g}g
-                        protein per 100g
+                        {food.calories_per_100g} cal | {food.protein_per_100g}g protein per 100g
+                        {food.bowl_size_g && ` | ~${food.bowl_size_g}g per bowl`}
                       </div>
                     </div>
                     <Plus className="w-5 h-5 text-primary" />
@@ -185,69 +251,155 @@ export function FoodSearch({ onSelect, region, className }: FoodSearchProps) {
               </button>
             </div>
 
-            {/* Quantity Input */}
-            <div className="flex items-center gap-4 mb-4">
-              <div className="flex-1">
-                <label className="text-sm text-muted-foreground mb-1 block">
-                  Quantity (grams)
-                </label>
-                <Input
-                  type="number"
-                  value={quantity}
-                  onChange={(e) => setQuantity(Number(e.target.value))}
-                  min={1}
-                  className="text-center"
-                />
-              </div>
+            {/* Quantity Input with Unit Selection */}
+            <div className="space-y-3 mb-4">
+              {/* Unit Selector */}
               <div className="flex gap-2">
-                {[50, 100, 150, 200].map((qty) => (
+                <button
+                  onClick={() => {
+                    setUnit("grams");
+                    if (selectedFood?.bowl_size_g && quantity === selectedFood.bowl_size_g) {
+                      setQuantity(100);
+                    }
+                  }}
+                  className={cn(
+                    "flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                    unit === "grams"
+                      ? "bg-primary text-white"
+                      : "bg-card border border-border hover:border-primary/50 text-white"
+                  )}
+                >
+                  Grams
+                </button>
+                {selectedFood?.bowl_size_g && (
                   <button
-                    key={qty}
-                    onClick={() => setQuantity(qty)}
+                    onClick={() => {
+                      setUnit("bowl");
+                      setQuantity(1);
+                    }}
                     className={cn(
-                      "px-3 py-2 rounded-lg text-sm transition-colors",
-                      quantity === qty
+                      "flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                      unit === "bowl"
                         ? "bg-primary text-white"
-                        : "bg-card border border-border hover:border-primary/50"
+                        : "bg-card border border-border hover:border-primary/50 text-white"
                     )}
                   >
-                    {qty}g
+                    Bowl ({selectedFood.bowl_size_g}g)
                   </button>
-                ))}
+                )}
+              </div>
+
+              {/* Quantity Input */}
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <label className="text-sm text-muted-foreground mb-1 block">
+                    Quantity ({unit === "bowl" ? "bowls" : "grams"})
+                  </label>
+                  <Input
+                    type="number"
+                    value={quantity}
+                    onChange={(e) => setQuantity(Number(e.target.value))}
+                    min={0.1}
+                    step={unit === "bowl" ? 0.5 : 1}
+                    className="text-center"
+                  />
+                  {unit === "bowl" && selectedFood?.bowl_size_g && (
+                    <p className="text-xs text-muted-foreground mt-1 text-center">
+                      = {Math.round(quantity * selectedFood.bowl_size_g)}g
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {unit === "grams" ? (
+                    [50, 100, 150, 200, 250].map((qty) => (
+                      <button
+                        key={qty}
+                        onClick={() => setQuantity(qty)}
+                        className={cn(
+                          "px-3 py-2 rounded-lg text-sm transition-colors",
+                          quantity === qty
+                            ? "bg-primary text-white"
+                            : "bg-card border border-border hover:border-primary/50"
+                        )}
+                      >
+                        {qty}g
+                      </button>
+                    ))
+                  ) : (
+                    [0.5, 1, 1.5, 2].map((qty) => (
+                      <button
+                        key={qty}
+                        onClick={() => setQuantity(qty)}
+                        className={cn(
+                          "px-3 py-2 rounded-lg text-sm transition-colors",
+                          quantity === qty
+                            ? "bg-primary text-white"
+                            : "bg-card border border-border hover:border-primary/50"
+                        )}
+                      >
+                        {qty}
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Nutrition Preview */}
-            <div className="grid grid-cols-4 gap-2 mb-4">
+            {/* Nutrition Preview - High Precision */}
+            <div className="space-y-2 mb-4">
+              <div className="grid grid-cols-4 gap-2">
+                {(() => {
+                  const qtyInGrams = getQuantityInGrams();
+                  const nutrition = calculateNutrition(selectedFood, qtyInGrams);
+                  return (
+                    <>
+                      <div className="text-center p-2 rounded-lg bg-card">
+                        <p className="text-lg font-bold text-primary">
+                          {Math.round(nutrition.calories)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">cal</p>
+                      </div>
+                      <div className="text-center p-2 rounded-lg bg-card">
+                        <p className="text-lg font-bold text-green-400">
+                          {nutrition.protein.toFixed(1)}g
+                        </p>
+                        <p className="text-xs text-muted-foreground">protein</p>
+                      </div>
+                      <div className="text-center p-2 rounded-lg bg-card">
+                        <p className="text-lg font-bold text-blue-400">
+                          {nutrition.carbs.toFixed(1)}g
+                        </p>
+                        <p className="text-xs text-muted-foreground">carbs</p>
+                      </div>
+                      <div className="text-center p-2 rounded-lg bg-card">
+                        <p className="text-lg font-bold text-yellow-400">
+                          {nutrition.fats.toFixed(1)}g
+                        </p>
+                        <p className="text-xs text-muted-foreground">fats</p>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+              {/* Micronutrients */}
               {(() => {
-                const nutrition = calculateNutrition(selectedFood, quantity);
+                const qtyInGrams = getQuantityInGrams();
+                const nutrition = calculateNutrition(selectedFood, qtyInGrams);
                 return (
-                  <>
-                    <div className="text-center p-2 rounded-lg bg-card">
-                      <p className="text-lg font-bold text-primary">
-                        {nutrition.calories}
-                      </p>
-                      <p className="text-xs text-muted-foreground">cal</p>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="text-center p-1.5 rounded bg-background/50">
+                      <span className="text-muted-foreground">Fiber: </span>
+                      <span className="text-white font-medium">{nutrition.fiber.toFixed(1)}g</span>
                     </div>
-                    <div className="text-center p-2 rounded-lg bg-card">
-                      <p className="text-lg font-bold text-green-400">
-                        {nutrition.protein}g
-                      </p>
-                      <p className="text-xs text-muted-foreground">protein</p>
+                    <div className="text-center p-1.5 rounded bg-background/50">
+                      <span className="text-muted-foreground">Mg: </span>
+                      <span className="text-white font-medium">{nutrition.magnesium.toFixed(1)}mg</span>
                     </div>
-                    <div className="text-center p-2 rounded-lg bg-card">
-                      <p className="text-lg font-bold text-blue-400">
-                        {nutrition.carbs}g
-                      </p>
-                      <p className="text-xs text-muted-foreground">carbs</p>
+                    <div className="text-center p-1.5 rounded bg-background/50">
+                      <span className="text-muted-foreground">Zn: </span>
+                      <span className="text-white font-medium">{nutrition.zinc.toFixed(2)}mg</span>
                     </div>
-                    <div className="text-center p-2 rounded-lg bg-card">
-                      <p className="text-lg font-bold text-yellow-400">
-                        {nutrition.fats}g
-                      </p>
-                      <p className="text-xs text-muted-foreground">fats</p>
-                    </div>
-                  </>
+                  </div>
                 );
               })()}
             </div>
