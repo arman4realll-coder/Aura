@@ -225,22 +225,23 @@ export default function LogMealPage() {
     }
 
     // Success toast
+    const hpChange = result.hpChange;
     toast.success(
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-1 text-yellow-400">
           <Zap className="w-4 h-4" />
           +{result.xpEarned} XP
         </div>
-        {result.hpChange !== undefined && result.hpChange !== 0 && (
+        {hpChange !== undefined && hpChange !== 0 && (
           <div
             className={cn(
               "flex items-center gap-1",
-              result.hpChange > 0 ? "text-green-400" : "text-red-400"
+              hpChange > 0 ? "text-green-400" : "text-red-400"
             )}
           >
             <Heart className="w-4 h-4" />
-            {result.hpChange > 0 ? "+" : ""}
-            {result.hpChange} HP
+            {hpChange > 0 ? "+" : ""}
+            {hpChange} HP
           </div>
         )}
       </div>
