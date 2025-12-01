@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { calculateLevel } from "@/lib/calculations/xp-calculator";
+import { getRank } from "@/lib/calculations/gamification";
 import type { GameState, Profile, DailyProgress } from "@/types";
 
 interface GameStore extends GameState {
@@ -78,7 +80,6 @@ export const useGameStore = create<GameStore>()(
         const newTotalXP = totalXP + amount;
 
         // Calculate new level
-        const { calculateLevel, getRank } = require("@/lib/calculations/gamification");
         const newLevel = calculateLevel(newTotalXP);
         const newRank = getRank(newLevel);
 

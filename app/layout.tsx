@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Toaster } from "sonner";
+import { ToasterProvider } from "@/components/providers/toaster-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -30,16 +30,7 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className="antialiased">
         {children}
-        <Toaster
-          position="top-center"
-          toastOptions={{
-            style: {
-              background: "#1e293b",
-              border: "1px solid #334155",
-              color: "#fff",
-            },
-          }}
-        />
+        <ToasterProvider />
       </body>
     </html>
   );
