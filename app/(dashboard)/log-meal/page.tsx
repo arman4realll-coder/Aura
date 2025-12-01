@@ -231,7 +231,7 @@ export default function LogMealPage() {
           <Zap className="w-4 h-4" />
           +{result.xpEarned} XP
         </div>
-        {result.hpChange !== 0 && (
+        {result.hpChange !== undefined && result.hpChange !== 0 && (
           <div
             className={cn(
               "flex items-center gap-1",
